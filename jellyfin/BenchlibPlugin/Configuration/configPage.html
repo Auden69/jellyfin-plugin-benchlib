@@ -1,0 +1,98 @@
+<div
+  id="BenchlibConfigPage"
+  data-role="page"
+  class="page type-interior pluginConfigurationPage"
+>
+  <div data-role="content">
+    <div class="content-primary">
+      <div class="verticalSection">
+        <h2 class="sectionTitle">BenchLib</h2>
+        <p>
+          Envoie les statistiques agrégées de vos bibliothèques vers BenchLib.
+          Aucun titre n'est transmis.
+        </p>
+      </div>
+
+      <div class="inputContainer">
+        <label class="inputLabel" for="bl_key">Clé API BenchLib</label>
+        <input id="bl_key" name="ApiKey" type="password" class="emby-input" />
+        <div class="fieldDescription">
+          Générez votre clé depuis votre tableau de bord BenchLib.
+        </div>
+      </div>
+
+      <div class="inputContainer">
+        <label class="inputLabel" for="bl_url">URL de l'API</label>
+        <input
+          id="bl_url"
+          name="BenchlibApiUrl"
+          type="text"
+          class="emby-input"
+        />
+        <div class="fieldDescription">
+          Laissez vide pour l'API officielle. En local :
+          http://192.168.1.16:3001
+        </div>
+      </div>
+
+      <div class="checkboxContainer">
+        <label
+          ><input
+            id="bl_movies"
+            name="EnableMovies"
+            type="checkbox"
+            class="emby-checkbox"
+          /><span>Films</span></label
+        >
+      </div>
+      <div class="checkboxContainer">
+        <label
+          ><input
+            id="bl_series"
+            name="EnableSeries"
+            type="checkbox"
+            class="emby-checkbox"
+          /><span>Séries</span></label
+        >
+      </div>
+      <div class="checkboxContainer">
+        <label
+          ><input
+            id="bl_music"
+            name="EnableMusic"
+            type="checkbox"
+            class="emby-checkbox"
+          /><span>Musique</span></label
+        >
+      </div>
+
+      <br />
+
+      <button
+        type="button"
+        id="bl_save"
+        class="raised button-submit block emby-button"
+      >
+        Enregistrer
+      </button>
+      <button
+        type="button"
+        id="bl_test"
+        class="raised emby-button"
+        style="margin-top: 0.5em"
+      >
+        Tester la connexion
+      </button>
+
+      <div
+        id="bl_status"
+        style="
+          margin-top: 1em;
+          padding: 0.75em 1em;
+          border-radius: 4px;
+          display: none;
+        "
+      ></div>
+    </div>
+  </div>
+</div>
