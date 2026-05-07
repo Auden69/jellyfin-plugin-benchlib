@@ -11,7 +11,8 @@
     >
       <div data-role="content">
         <div class="content-primary">
-          <form class="blConfigPage">
+          <!-- ── Étape 1 — Clé API ─────────────────────────────────── -->
+          <div id="bl_step1">
             <div class="sectionTitleContainer flex align-items-center">
               <h2 class="sectionTitle">BenchLib</h2>
             </div>
@@ -31,75 +32,27 @@
                 is="emby-input"
               />
               <div class="fieldDescription">
-                Générez votre clé depuis votre tableau de bord BenchLib.
+                Générez votre clé sur
+                <a
+                  href="https://benchlib.com/dashboard/api-keys"
+                  target="_blank"
+                  rel="noopener"
+                  >benchlib.com/dashboard/api-keys</a
+                >
               </div>
             </div>
 
-            <div class="inputContainer">
-              <label class="inputLabel inputLabelUnfocused" for="bl_url"
-                >URL de l'API</label
-              >
-              <input
-                type="text"
-                id="bl_url"
-                name="BenchlibApiUrl"
-                is="emby-input"
-              />
-              <div class="fieldDescription">
-                Laissez vide pour l'API officielle. En local :
-                http://192.168.1.16:3001
-              </div>
-            </div>
-
-            <div class="checkboxContainer checkboxContainer-withDescription">
-              <label>
-                <input
-                  is="emby-checkbox"
-                  type="checkbox"
-                  id="bl_movies"
-                  name="EnableMovies"
-                />
-                <span>Films</span>
-              </label>
-            </div>
-            <div class="checkboxContainer checkboxContainer-withDescription">
-              <label>
-                <input
-                  is="emby-checkbox"
-                  type="checkbox"
-                  id="bl_series"
-                  name="EnableSeries"
-                />
-                <span>Séries</span>
-              </label>
-            </div>
-            <div class="checkboxContainer checkboxContainer-withDescription">
-              <label>
-                <input
-                  is="emby-checkbox"
-                  type="checkbox"
-                  id="bl_music"
-                  name="EnableMusic"
-                />
-                <span>Musique</span>
-              </label>
-            </div>
-
-            <br />
-
-            <button is="emby-button" type="button" class="raised" id="bl_test">
-              <span>Tester la connexion</span>
-            </button>
             <button
               is="emby-button"
-              type="submit"
+              type="button"
               class="raised button-submit block"
+              id="bl_btn_detect"
             >
-              <span>${Save}</span>
+              <span>Tester la connexion et détecter les bibliothèques</span>
             </button>
 
             <div
-              id="bl_status"
+              id="bl_step1_status"
               style="
                 margin-top: 1em;
                 padding: 0.75em 1em;
@@ -107,14 +60,101 @@
                 display: none;
               "
             ></div>
-          </form>
+          </div>
+
+          <!-- ── Étape 2 — Sélection des bibliothèques ──────────────── -->
+          <div id="bl_step2" style="display: none">
+            <div
+              class="sectionTitleContainer flex align-items-center"
+              style="margin-top: 0.5em"
+            >
+              <h2 class="sectionTitle" style="flex: 1">
+                Bibliothèques détectées
+              </h2>
+              <button
+                is="emby-button"
+                type="button"
+                class="raised"
+                id="bl_btn_refresh"
+                style="font-size: 0.8em; padding: 0.3em 0.8em"
+              >
+                <span>🔄 Rafraîchir</span>
+              </button>
+            </div>
+            <p style="color: #aaa; font-size: 0.85em; margin-bottom: 1em">
+              Cochez les bibliothèques à partager sur BenchLib. Si vous ajoutez
+              une nouvelle bibliothèque dans Jellyfin, cliquez sur Rafraîchir.
+            </p>
+
+            <div id="bl_libraries_list"></div>
+
+            <br />
+
+            <button
+              is="emby-button"
+              type="button"
+              class="raised button-submit block"
+              id="bl_btn_save"
+            >
+              <span>Enregistrer les paramètres</span>
+            </button>
+
+            <div
+              id="bl_step2_status"
+              style="
+                margin-top: 1em;
+                padding: 0.75em 1em;
+                border-radius: 4px;
+                display: none;
+              "
+            ></div>
+          </div>
+
+          <!-- ── Dernier envoi ──────────────────────────────────────── -->
+          <div id="bl_last_scan" style="display: none; margin-top: 2em">
+            <div class="sectionTitleContainer flex align-items-center">
+              <h2 class="sectionTitle">Dernier envoi</h2>
+            </div>
+            <p style="color: #aaa; font-size: 0.85em; margin-bottom: 1em">
+              Données exactes transmises à BenchLib — vérifiez qu'aucune
+              information personnelle n'y figure.
+            </p>
+            <div id="bl_results_list"></div>
+          </div>
         </div>
       </div>
+
       <script type="text/javascript">
         var BL_ID = "a1b2c3d4-e5f6-7890-abcd-ef1234567890";
 
-        function blStatus(msg, type) {
-          var el = document.getElementById("bl_status");
+        var BL_TYPE_MAP = {
+          movies: "MOVIES",
+          tvshows: "SERIES",
+          music: "MUSIC",
+          books: "BOOKS",
+          audiobooks: "AUDIOBOOK",
+        };
+
+        var BL_TYPE_LABELS = {
+          MOVIES: "Films",
+          SERIES: "Séries",
+          MUSIC: "Musique",
+          BOOKS: "Livres",
+          AUDIOBOOK: "Audiobooks",
+        };
+
+        var BL_CERT_COLORS = {
+          BRONZE: "#cd7f32",
+          SILVER: "#aaaaaa",
+          GOLD: "#ffd700",
+          DIAMOND: "#b9f2ff",
+          ERREUR: "#c47b7b",
+        };
+
+        // ── Helpers ──────────────────────────────────────────────────────
+
+        function blStatus(elId, msg, type) {
+          var el = document.getElementById(elId);
           el.textContent = msg;
           el.style.display = "block";
           el.style.background =
@@ -123,68 +163,280 @@
             type === "ok" ? "#7bc47b" : type === "err" ? "#c47b7b" : "#7babc4";
         }
 
-        $(".blConfigPage").on("pageshow", function () {
-          Dashboard.showLoadingMsg();
-          ApiClient.getPluginConfiguration(BL_ID).then(function (config) {
-            document.getElementById("bl_key").value = config.ApiKey || "";
-            document.getElementById("bl_url").value =
-              config.BenchlibApiUrl || "";
-            document.getElementById("bl_movies").checked =
-              config.EnableMovies !== false;
-            document.getElementById("bl_series").checked =
-              config.EnableSeries !== false;
-            document.getElementById("bl_music").checked =
-              config.EnableMusic !== false;
-            Dashboard.hideLoadingMsg();
-          });
-        });
+        function timeAgo(isoDate) {
+          if (!isoDate) return "";
+          var diff = Math.floor((Date.now() - new Date(isoDate)) / 1000);
+          if (diff < 60) return "il y a " + diff + "s";
+          if (diff < 3600) return "il y a " + Math.floor(diff / 60) + "min";
+          if (diff < 86400) return "il y a " + Math.floor(diff / 3600) + "h";
+          return "il y a " + Math.floor(diff / 86400) + "j";
+        }
 
-        $(".blConfigPage").on("submit", function () {
-          Dashboard.showLoadingMsg();
-          ApiClient.getPluginConfiguration(BL_ID).then(function (config) {
-            config.ApiKey = document.getElementById("bl_key").value.trim();
-            config.BenchlibApiUrl =
-              document.getElementById("bl_url").value.trim() ||
-              "https://api.benchlib.com";
-            config.EnableMovies = document.getElementById("bl_movies").checked;
-            config.EnableSeries = document.getElementById("bl_series").checked;
-            config.EnableMusic = document.getElementById("bl_music").checked;
-            ApiClient.updatePluginConfiguration(BL_ID, config).then(
-              Dashboard.processPluginConfigurationUpdateResult,
-            );
-          });
-          return false;
-        });
+        function escapeHtml(text) {
+          return text
+            .replace(/&/g, "&amp;")
+            .replace(/</g, "&lt;")
+            .replace(/>/g, "&gt;");
+        }
 
-        $("#bl_test").on("click", function () {
+        // ── Étape 1 → Étape 2 ────────────────────────────────────────────
+
+        function goToStep2() {
+          document.getElementById("bl_step1").style.display = "none";
+          document.getElementById("bl_step2").style.display = "block";
+        }
+
+        function goToStep1() {
+          document.getElementById("bl_step1").style.display = "block";
+          document.getElementById("bl_step2").style.display = "none";
+        }
+
+        // ── Détection des bibliothèques ───────────────────────────────────
+
+        function detectLibraries(selectedIds, onSuccess) {
           var key = document.getElementById("bl_key").value.trim();
-          var url = (
-            document.getElementById("bl_url").value.trim() ||
-            "https://api.benchlib.com"
-          ).replace(/\/$/, "");
+          var url = "https://api.benchlib.com";
+
           if (!key) {
-            blStatus("Renseignez votre clé API.", "err");
+            blStatus("bl_step1_status", "Renseignez votre clé API.", "err");
             return;
           }
-          blStatus("Test en cours...", "info");
+
+          blStatus("bl_step1_status", "Test de la connexion...", "info");
+
+          // Test de la clé API
           var x = new XMLHttpRequest();
           x.open("GET", url + "/api/v1/ping", true);
           x.setRequestHeader("X-BenchLib-Key", key);
           x.timeout = 10000;
+
           x.onload = function () {
-            x.status === 200
-              ? blStatus("Connexion réussie ✓", "ok")
-              : x.status === 401
-                ? blStatus("Clé API invalide.", "err")
-                : blStatus("Erreur " + x.status, "err");
+            if (x.status === 200) {
+              blStatus(
+                "bl_step1_status",
+                "Connexion réussie ✓ — chargement des bibliothèques...",
+                "info",
+              );
+              loadLibraries(selectedIds, onSuccess);
+            } else if (x.status === 401) {
+              blStatus(
+                "bl_step1_status",
+                "Clé API invalide ou révoquée.",
+                "err",
+              );
+            } else {
+              blStatus(
+                "bl_step1_status",
+                "Erreur " + x.status + " — vérifiez votre clé API.",
+                "err",
+              );
+            }
           };
           x.onerror = function () {
-            blStatus("Impossible de joindre l'API.", "err");
+            blStatus(
+              "bl_step1_status",
+              "Impossible de joindre l'API BenchLib. Vérifiez votre connexion.",
+              "err",
+            );
           };
           x.ontimeout = function () {
-            blStatus("Timeout.", "err");
+            blStatus(
+              "bl_step1_status",
+              "Timeout — le serveur ne répond pas.",
+              "err",
+            );
           };
           x.send();
+        }
+
+        function loadLibraries(selectedIds, onSuccess) {
+          var userId = ApiClient.getCurrentUserId();
+          ApiClient.getJSON(ApiClient.getUrl("Users/" + userId + "/Views"))
+            .then(function (result) {
+              var container = document.getElementById("bl_libraries_list");
+              container.innerHTML = "";
+
+              var items = (result.Items || []).filter(function (i) {
+                return BL_TYPE_MAP[i.CollectionType];
+              });
+
+              if (items.length === 0) {
+                container.innerHTML =
+                  "<p style='color:#aaa;font-size:0.85em;'>Aucune bibliothèque compatible (Films, Séries, Musique, Livres).</p>";
+                if (onSuccess) onSuccess();
+                return;
+              }
+
+              items.forEach(function (lib) {
+                var mediaType = BL_TYPE_MAP[lib.CollectionType];
+                var key = lib.Id + "|" + mediaType;
+                var checked = selectedIds.indexOf(key) !== -1 ? "checked" : "";
+                var count = lib.ChildCount
+                  ? " <span style='color:#666;font-size:0.85em;'>(" +
+                    lib.ChildCount +
+                    " items)</span>"
+                  : "";
+
+                var div = document.createElement("div");
+                div.className =
+                  "checkboxContainer checkboxContainer-withDescription";
+                div.innerHTML =
+                  "<label>" +
+                  '<input is="emby-checkbox" type="checkbox" class="bl_lib_check" data-key="' +
+                  key +
+                  '" ' +
+                  checked +
+                  " />" +
+                  "<span>" +
+                  lib.Name +
+                  count +
+                  "</span>" +
+                  "</label>" +
+                  '<div class="fieldDescription checkboxFieldDescription">' +
+                  BL_TYPE_LABELS[mediaType] +
+                  "</div>";
+                container.appendChild(div);
+              });
+
+              if (onSuccess) onSuccess();
+            })
+            .catch(function () {
+              blStatus(
+                "bl_step1_status",
+                "Impossible de charger les bibliothèques Jellyfin.",
+                "err",
+              );
+            });
+        }
+
+        // ── Rendu du dernier envoi ────────────────────────────────────────
+
+        function renderLastResults(results) {
+          if (!results || results.length === 0) return;
+          var container = document.getElementById("bl_results_list");
+          document.getElementById("bl_last_scan").style.display = "block";
+          container.innerHTML = "";
+
+          results.forEach(function (r) {
+            var label = BL_TYPE_LABELS[r.MediaType] || r.MediaType;
+            var certColor = BL_CERT_COLORS[r.Certification] || "#aaa";
+            var certText = r.Score
+              ? r.Score.toFixed(1) + " (" + r.Certification + ")"
+              : r.Certification || "—";
+            var ago = timeAgo(r.ScannedAt);
+            var id = "bl_payload_" + r.MediaType;
+
+            var div = document.createElement("div");
+            div.style.cssText =
+              "margin-bottom:1em; border:1px solid #333; border-radius:6px; overflow:hidden;";
+            div.innerHTML =
+              '<div style="display:flex; align-items:center; justify-content:space-between; padding:0.6em 1em; background:#1a1a1a; cursor:pointer;" onclick="blTogglePayload(\'' +
+              id +
+              "')\">" +
+              '<span style="font-weight:bold;">' +
+              label +
+              "</span>" +
+              "<span>" +
+              '<span style="color:' +
+              certColor +
+              '; font-weight:bold; margin-right:1em;">' +
+              certText +
+              "</span>" +
+              '<span style="color:#666; font-size:0.8em;">' +
+              ago +
+              "</span>" +
+              '<span style="color:#555; margin-left:0.75em; font-size:0.8em;" id="' +
+              id +
+              '_arrow">▼ Voir les données</span>' +
+              "</span>" +
+              "</div>" +
+              '<div id="' +
+              id +
+              '" style="display:none; background:#111; padding:1em;">' +
+              '<pre style="font-size:0.75em; color:#7bc47b; overflow:auto; max-height:400px; margin:0;">' +
+              (r.PayloadJson
+                ? escapeHtml(r.PayloadJson)
+                : "Aucune donnée disponible") +
+              "</pre>" +
+              "</div>";
+            container.appendChild(div);
+          });
+        }
+
+        function blTogglePayload(id) {
+          var el = document.getElementById(id);
+          var arrow = document.getElementById(id + "_arrow");
+          if (el.style.display === "none") {
+            el.style.display = "block";
+            arrow.textContent = "▲ Masquer";
+          } else {
+            el.style.display = "none";
+            arrow.textContent = "▼ Voir les données";
+          }
+        }
+
+        // ── Initialisation ────────────────────────────────────────────────
+
+        $(".blConfigPage").on("pageshow", function () {
+          Dashboard.showLoadingMsg();
+          ApiClient.getPluginConfiguration(BL_ID).then(function (config) {
+            document.getElementById("bl_key").value = config.ApiKey || "";
+            var selected = config.SelectedLibraries || [];
+
+            if (selected.length > 0) {
+              // Déjà configuré — aller directement à l'étape 2
+              goToStep2();
+              loadLibraries(selected, null);
+            }
+            // Sinon rester à l'étape 1
+
+            renderLastResults(config.LastScanResults || []);
+            Dashboard.hideLoadingMsg();
+          });
+        });
+
+        // ── Bouton "Tester et détecter" ───────────────────────────────────
+
+        $("#bl_btn_detect").on("click", function () {
+          ApiClient.getPluginConfiguration(BL_ID).then(function (config) {
+            var selected = config.SelectedLibraries || [];
+            detectLibraries(selected, function () {
+              goToStep2();
+            });
+          });
+        });
+
+        // ── Bouton "Rafraîchir" ───────────────────────────────────────────
+
+        $("#bl_btn_refresh").on("click", function () {
+          ApiClient.getPluginConfiguration(BL_ID).then(function (config) {
+            var selected = config.SelectedLibraries || [];
+            loadLibraries(selected, null);
+          });
+        });
+
+        // ── Bouton "Enregistrer" ──────────────────────────────────────────
+
+        $("#bl_btn_save").on("click", function () {
+          var selected = [];
+          document
+            .querySelectorAll(".bl_lib_check:checked")
+            .forEach(function (cb) {
+              selected.push(cb.getAttribute("data-key"));
+            });
+
+          Dashboard.showLoadingMsg();
+          ApiClient.getPluginConfiguration(BL_ID).then(function (config) {
+            config.ApiKey = document.getElementById("bl_key").value.trim();
+            config.BenchlibApiUrl = "https://api.benchlib.com";
+            config.SelectedLibraries = selected;
+            ApiClient.updatePluginConfiguration(BL_ID, config).then(
+              function () {
+                Dashboard.processPluginConfigurationUpdateResult();
+                blStatus("bl_step2_status", "Paramètres enregistrés ✓", "ok");
+              },
+            );
+          });
         });
       </script>
     </div>

@@ -25,19 +25,42 @@ public class LibraryScanner
         _logger = logger;
     }
 
+
+    // ─── Dispatcher principal ─────────────────────────────────────────────────
+
+    public Task<IngestPayload> ScanLibrariesAsync(List<string> libraryIds, string mediaType, CancellationToken ct)
+    {
+        return mediaType switch
+        {
+            "MOVIES" => ScanMoviesAsync(ct, libraryIds),
+            "SERIES" => ScanSeriesAsync(ct, libraryIds),
+            "MUSIC"  => ScanMusicAsync(ct, libraryIds),
+            _         => Task.FromResult(new IngestPayload
+            {
+                MediaType = mediaType,
+                ScannedAt = DateTime.UtcNow.ToString("o"),
+                Stats     = new StatsPayload { TotalItems = 0 }
+            })
+        };
+    }
+
     // ─── Films ────────────────────────────────────────────────────────────────
 
-    public Task<IngestPayload> ScanMoviesAsync(CancellationToken ct)
+    public Task<IngestPayload> ScanMoviesAsync(CancellationToken ct, List<string>? libraryIds = null)
+
     {
         _logger.LogInformation("[BenchLib] Scan Films démarré");
         var startMs = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
 
-        var movies = _libraryManager.GetItemList(new InternalItemsQuery
+        var moviesQuery = new InternalItemsQuery
         {
             IncludeItemTypes = new[] { BaseItemKind.Movie },
             IsVirtualItem    = false,
             Recursive        = true,
-        });
+        };
+        if (libraryIds != null && libraryIds.Count > 0)
+            moviesQuery.AncestorIds = libraryIds.Select(id => Guid.Parse(id)).ToArray();
+        var movies = _libraryManager.GetItemList(moviesQuery);
 
         var video     = new VideoStats();
         var audio     = new AudioStats();
@@ -127,24 +150,21 @@ public class LibraryScanner
 
     // ─── Séries ───────────────────────────────────────────────────────────────
 
-    public Task<IngestPayload> ScanSeriesAsync(CancellationToken ct)
+    public Task<IngestPayload> ScanSeriesAsync(CancellationToken ct, List<string>? libraryIds = null)
     {
         _logger.LogInformation("[BenchLib] Scan Séries démarré");
         var startMs = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
 
-        var allSeries = _libraryManager.GetItemList(new InternalItemsQuery
+        var seriesQuery = new InternalItemsQuery { IncludeItemTypes = new[] { BaseItemKind.Series }, IsVirtualItem = false, Recursive = true };
+        var episodesQuery = new InternalItemsQuery { IncludeItemTypes = new[] { BaseItemKind.Episode }, IsVirtualItem = false, Recursive = true };
+        if (libraryIds != null && libraryIds.Count > 0)
         {
-            IncludeItemTypes = new[] { BaseItemKind.Series },
-            IsVirtualItem    = false,
-            Recursive        = true,
-        }).OfType<Series>().ToList();
-
-        var episodes = _libraryManager.GetItemList(new InternalItemsQuery
-        {
-            IncludeItemTypes = new[] { BaseItemKind.Episode },
-            IsVirtualItem    = false,
-            Recursive        = true,
-        }).OfType<Episode>().ToList();
+            var guids = libraryIds.Select(id => Guid.Parse(id)).ToArray();
+            seriesQuery.AncestorIds   = guids;
+            episodesQuery.AncestorIds = guids;
+        }
+        var allSeries = _libraryManager.GetItemList(seriesQuery).OfType<Series>().ToList();
+        var episodes  = _libraryManager.GetItemList(episodesQuery).OfType<Episode>().ToList();
 
         var video     = new VideoStats();
         var audio     = new AudioStats();
@@ -242,24 +262,21 @@ public class LibraryScanner
 
     // ─── Musique ──────────────────────────────────────────────────────────────
 
-    public Task<IngestPayload> ScanMusicAsync(CancellationToken ct)
+    public Task<IngestPayload> ScanMusicAsync(CancellationToken ct, List<string>? libraryIds = null)
     {
         _logger.LogInformation("[BenchLib] Scan Musique démarré");
         var startMs = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
 
-        var tracks = _libraryManager.GetItemList(new InternalItemsQuery
+        var tracksQuery = new InternalItemsQuery { IncludeItemTypes = new[] { BaseItemKind.Audio }, IsVirtualItem = false, Recursive = true };
+        var albumsQuery = new InternalItemsQuery { IncludeItemTypes = new[] { BaseItemKind.MusicAlbum }, IsVirtualItem = false, Recursive = true };
+        if (libraryIds != null && libraryIds.Count > 0)
         {
-            IncludeItemTypes = new[] { BaseItemKind.Audio },
-            IsVirtualItem    = false,
-            Recursive        = true,
-        }).OfType<Audio>().ToList();
-
-        var albums = _libraryManager.GetItemList(new InternalItemsQuery
-        {
-            IncludeItemTypes = new[] { BaseItemKind.MusicAlbum },
-            IsVirtualItem    = false,
-            Recursive        = true,
-        });
+            var guids = libraryIds.Select(id => Guid.Parse(id)).ToArray();
+            tracksQuery.AncestorIds = guids;
+            albumsQuery.AncestorIds = guids;
+        }
+        var tracks = _libraryManager.GetItemList(tracksQuery).OfType<Audio>().ToList();
+        var albums = _libraryManager.GetItemList(albumsQuery);
 
         var artists  = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         var audioSt  = new AudioStats();
