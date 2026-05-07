@@ -345,7 +345,7 @@ public class LibraryScanner
                 if (season.IndexNumber == 0) continue;
                 if (isContinuing && IsInProgress(season, seasons)) continue;
 
-                var allEps  = season.GetChildren(null, false).OfType<Episode>().ToList();
+                var allEps  = season.Children.OfType<Episode>().ToList();
                 var exp     = allEps.Count;
                 var pres    = allEps.Count(e => !e.IsVirtualItem);
                 if (exp <= 0) continue;
@@ -370,12 +370,12 @@ public class LibraryScanner
     {
         var max = all.Where(s => s.IndexNumber > 0).Max(s => s.IndexNumber ?? 0);
         if (season.IndexNumber < max) return false;
-        return season.GetChildren(null, false).OfType<Episode>().Any(e => e.IsVirtualItem);
+        return season.Children.OfType<Episode>().Any(e => e.IsVirtualItem);
     }
 
     // ─── Helpers ──────────────────────────────────────────────────────────────
 
-    private static MediaStream? BestAudio(IList<MediaStream> streams)
+    private static MediaStream? BestAudio(IEnumerable<MediaStream> streams)
     {
         var list = streams.Where(s => s.Type == MediaStreamType.Audio).ToList();
         return list.Count == 0 ? null : list.OrderByDescending(AudioScore).First();

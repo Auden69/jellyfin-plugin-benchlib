@@ -1,98 +1,192 @@
-<div
-  id="BenchlibConfigPage"
-  data-role="page"
-  class="page type-interior pluginConfigurationPage"
->
-  <div data-role="content">
-    <div class="content-primary">
-      <div class="verticalSection">
-        <h2 class="sectionTitle">BenchLib</h2>
-        <p>
-          Envoie les statistiques agrégées de vos bibliothèques vers BenchLib.
-          Aucun titre n'est transmis.
-        </p>
-      </div>
+<!doctype html>
+<html>
+  <head>
+    <title>BenchLib</title>
+  </head>
+  <body>
+    <div
+      data-role="page"
+      class="page type-interior pluginConfigurationPage blConfigPage"
+      data-require="emby-input,emby-button,emby-checkbox"
+    >
+      <div data-role="content">
+        <div class="content-primary">
+          <form class="blConfigPage">
+            <div class="sectionTitleContainer flex align-items-center">
+              <h2 class="sectionTitle">BenchLib</h2>
+            </div>
+            <p>
+              Envoie les statistiques agrégées de vos bibliothèques vers
+              BenchLib. Aucun titre n'est transmis.
+            </p>
 
-      <div class="inputContainer">
-        <label class="inputLabel" for="bl_key">Clé API BenchLib</label>
-        <input id="bl_key" name="ApiKey" type="password" class="emby-input" />
-        <div class="fieldDescription">
-          Générez votre clé depuis votre tableau de bord BenchLib.
+            <div class="inputContainer">
+              <label class="inputLabel inputLabelUnfocused" for="bl_key"
+                >Clé API BenchLib</label
+              >
+              <input
+                type="password"
+                id="bl_key"
+                name="ApiKey"
+                is="emby-input"
+              />
+              <div class="fieldDescription">
+                Générez votre clé depuis votre tableau de bord BenchLib.
+              </div>
+            </div>
+
+            <div class="inputContainer">
+              <label class="inputLabel inputLabelUnfocused" for="bl_url"
+                >URL de l'API</label
+              >
+              <input
+                type="text"
+                id="bl_url"
+                name="BenchlibApiUrl"
+                is="emby-input"
+              />
+              <div class="fieldDescription">
+                Laissez vide pour l'API officielle. En local :
+                http://192.168.1.16:3001
+              </div>
+            </div>
+
+            <div class="checkboxContainer checkboxContainer-withDescription">
+              <label>
+                <input
+                  is="emby-checkbox"
+                  type="checkbox"
+                  id="bl_movies"
+                  name="EnableMovies"
+                />
+                <span>Films</span>
+              </label>
+            </div>
+            <div class="checkboxContainer checkboxContainer-withDescription">
+              <label>
+                <input
+                  is="emby-checkbox"
+                  type="checkbox"
+                  id="bl_series"
+                  name="EnableSeries"
+                />
+                <span>Séries</span>
+              </label>
+            </div>
+            <div class="checkboxContainer checkboxContainer-withDescription">
+              <label>
+                <input
+                  is="emby-checkbox"
+                  type="checkbox"
+                  id="bl_music"
+                  name="EnableMusic"
+                />
+                <span>Musique</span>
+              </label>
+            </div>
+
+            <br />
+
+            <button is="emby-button" type="button" class="raised" id="bl_test">
+              <span>Tester la connexion</span>
+            </button>
+            <button
+              is="emby-button"
+              type="submit"
+              class="raised button-submit block"
+            >
+              <span>${Save}</span>
+            </button>
+
+            <div
+              id="bl_status"
+              style="
+                margin-top: 1em;
+                padding: 0.75em 1em;
+                border-radius: 4px;
+                display: none;
+              "
+            ></div>
+          </form>
         </div>
       </div>
+      <script type="text/javascript">
+        var BL_ID = "a1b2c3d4-e5f6-7890-abcd-ef1234567890";
 
-      <div class="inputContainer">
-        <label class="inputLabel" for="bl_url">URL de l'API</label>
-        <input
-          id="bl_url"
-          name="BenchlibApiUrl"
-          type="text"
-          class="emby-input"
-        />
-        <div class="fieldDescription">
-          Laissez vide pour l'API officielle. En local :
-          http://192.168.1.16:3001
-        </div>
-      </div>
+        function blStatus(msg, type) {
+          var el = document.getElementById("bl_status");
+          el.textContent = msg;
+          el.style.display = "block";
+          el.style.background =
+            type === "ok" ? "#1a3a1a" : type === "err" ? "#3a1a1a" : "#1a2a3a";
+          el.style.color =
+            type === "ok" ? "#7bc47b" : type === "err" ? "#c47b7b" : "#7babc4";
+        }
 
-      <div class="checkboxContainer">
-        <label
-          ><input
-            id="bl_movies"
-            name="EnableMovies"
-            type="checkbox"
-            class="emby-checkbox"
-          /><span>Films</span></label
-        >
-      </div>
-      <div class="checkboxContainer">
-        <label
-          ><input
-            id="bl_series"
-            name="EnableSeries"
-            type="checkbox"
-            class="emby-checkbox"
-          /><span>Séries</span></label
-        >
-      </div>
-      <div class="checkboxContainer">
-        <label
-          ><input
-            id="bl_music"
-            name="EnableMusic"
-            type="checkbox"
-            class="emby-checkbox"
-          /><span>Musique</span></label
-        >
-      </div>
+        $(".blConfigPage").on("pageshow", function () {
+          Dashboard.showLoadingMsg();
+          ApiClient.getPluginConfiguration(BL_ID).then(function (config) {
+            document.getElementById("bl_key").value = config.ApiKey || "";
+            document.getElementById("bl_url").value =
+              config.BenchlibApiUrl || "";
+            document.getElementById("bl_movies").checked =
+              config.EnableMovies !== false;
+            document.getElementById("bl_series").checked =
+              config.EnableSeries !== false;
+            document.getElementById("bl_music").checked =
+              config.EnableMusic !== false;
+            Dashboard.hideLoadingMsg();
+          });
+        });
 
-      <br />
+        $(".blConfigPage").on("submit", function () {
+          Dashboard.showLoadingMsg();
+          ApiClient.getPluginConfiguration(BL_ID).then(function (config) {
+            config.ApiKey = document.getElementById("bl_key").value.trim();
+            config.BenchlibApiUrl =
+              document.getElementById("bl_url").value.trim() ||
+              "https://api.benchlib.com";
+            config.EnableMovies = document.getElementById("bl_movies").checked;
+            config.EnableSeries = document.getElementById("bl_series").checked;
+            config.EnableMusic = document.getElementById("bl_music").checked;
+            ApiClient.updatePluginConfiguration(BL_ID, config).then(
+              Dashboard.processPluginConfigurationUpdateResult,
+            );
+          });
+          return false;
+        });
 
-      <button
-        type="button"
-        id="bl_save"
-        class="raised button-submit block emby-button"
-      >
-        Enregistrer
-      </button>
-      <button
-        type="button"
-        id="bl_test"
-        class="raised emby-button"
-        style="margin-top: 0.5em"
-      >
-        Tester la connexion
-      </button>
-
-      <div
-        id="bl_status"
-        style="
-          margin-top: 1em;
-          padding: 0.75em 1em;
-          border-radius: 4px;
-          display: none;
-        "
-      ></div>
+        $("#bl_test").on("click", function () {
+          var key = document.getElementById("bl_key").value.trim();
+          var url = (
+            document.getElementById("bl_url").value.trim() ||
+            "https://api.benchlib.com"
+          ).replace(/\/$/, "");
+          if (!key) {
+            blStatus("Renseignez votre clé API.", "err");
+            return;
+          }
+          blStatus("Test en cours...", "info");
+          var x = new XMLHttpRequest();
+          x.open("GET", url + "/api/v1/ping", true);
+          x.setRequestHeader("X-BenchLib-Key", key);
+          x.timeout = 10000;
+          x.onload = function () {
+            x.status === 200
+              ? blStatus("Connexion réussie ✓", "ok")
+              : x.status === 401
+                ? blStatus("Clé API invalide.", "err")
+                : blStatus("Erreur " + x.status, "err");
+          };
+          x.onerror = function () {
+            blStatus("Impossible de joindre l'API.", "err");
+          };
+          x.ontimeout = function () {
+            blStatus("Timeout.", "err");
+          };
+          x.send();
+        });
+      </script>
     </div>
-  </div>
-</div>
+  </body>
+</html>
