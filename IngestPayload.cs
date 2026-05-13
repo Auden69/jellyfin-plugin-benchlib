@@ -9,6 +9,7 @@ public class IngestPayload
     [JsonPropertyName("mediaType")]     public string MediaType    { get; set; } = string.Empty;
     [JsonPropertyName("scannedAt")]     public string ScannedAt    { get; set; } = string.Empty;
     [JsonPropertyName("apiResponseMs")] public int?   ApiResponseMs { get; set; }
+    [JsonPropertyName("publicUrl")]     public string? PublicUrl     { get; set; }
     [JsonPropertyName("stats")]         public StatsPayload Stats  { get; set; } = new();
 }
 

@@ -21,6 +21,13 @@ public class PluginConfiguration : BasePluginConfiguration
     public string BenchlibApiUrl { get; set; } = "https://api.benchlib.com";
 
     /// <summary>
+    /// URL publique du serveur Jellyfin, utilisée par BenchLib pour le monitoring de disponibilité.
+    /// Optionnelle — si absente, le ping est désactivé pour ce serveur.
+    /// Exemple : https://jellyfin.mondomaine.com
+    /// </summary>
+    public string PublicUrl { get; set; } = string.Empty;
+
+    /// <summary>
     /// Bibliothèques sélectionnées par l'admin.
     /// Format : "libraryId|mediaType" ex: "abc123|MOVIES"
     /// </summary>

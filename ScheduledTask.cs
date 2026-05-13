@@ -91,9 +91,20 @@ public class ScheduledTask : IScheduledTask
             {
                 _logger.LogInformation("[BenchLib] Scan {MediaType}...", mediaType);
 
-                var payload    = await _scanner.ScanLibrariesAsync(libraryIds, mediaType, ct);
+                var payload = await _scanner.ScanLibrariesAsync(libraryIds, mediaType, ct);
+
+                if (payload.Stats.TotalItems == 0)
+                {
+                    _logger.LogInformation("[BenchLib] {MediaType} — bibliothèque vide, envoi ignoré.", mediaType);
+                    completed++;
+                    progress.Report((double)completed / total * 100);
+                    continue;
+                }
+
+                payload.PublicUrl = string.IsNullOrWhiteSpace(config.PublicUrl) ? null : config.PublicUrl;
+
                 var payloadJson = JsonSerializer.Serialize(payload, _prettyJson);
-                var result     = await _sender.SendAsync(payload, config.ApiKey, config.BenchlibApiUrl, ct);
+                var result      = await _sender.SendAsync(payload, config.ApiKey, config.BenchlibApiUrl, ct);
 
                 var scanResult = new LastScanResult
                 {

@@ -244,7 +244,7 @@ public class LibraryScanner
             ApiResponseMs = (int)(DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() - startMs),
             Stats = new StatsPayload
             {
-                TotalItems      = episodes.Count,
+                TotalItems      = allSeries.Count,
                 Video           = video,
                 Audio           = audio,
                 Subtitles       = subtitles,
@@ -291,20 +291,25 @@ public class LibraryScanner
             if (ct.IsCancellationRequested) break;
 
             var s = track.GetMediaStreams().FirstOrDefault(x => x.Type == MediaStreamType.Audio);
-            if (s != null)
+            // Codec depuis le stream audio, avec fallback sur le container du fichier.
+            // Jellyfin peut retourner un stream avec Codec null/vide pour certains formats
+            // (ogg, opus, wma, wav, etc.) — dans ce cas on lit track.Container.
+            var codec = (s?.Codec ?? "").ToLowerInvariant();
+            if (string.IsNullOrEmpty(codec))
+                codec = (track.Container ?? "").ToLowerInvariant();
+
+            if (codec == "flac") audioSt.ItemsFlac = (audioSt.ItemsFlac ?? 0) + 1;
+            else if (codec == "mp3")
             {
-                var c = (s.Codec ?? "").ToLowerInvariant();
-                if (c == "flac") audioSt.ItemsFlac = (audioSt.ItemsFlac ?? 0) + 1;
-                else if (c == "mp3")
-                {
-                    var br = s.BitRate ?? 0;
-                    if      (br >= 300_000) audioSt.ItemsMp3320 = (audioSt.ItemsMp3320 ?? 0) + 1;
-                    else if (br >= 240_000) audioSt.ItemsMp3256 = (audioSt.ItemsMp3256 ?? 0) + 1;
-                    else if (br >= 180_000) audioSt.ItemsMp3192 = (audioSt.ItemsMp3192 ?? 0) + 1;
-                    else                   audioSt.ItemsMp3Low  = (audioSt.ItemsMp3Low  ?? 0) + 1;
-                }
-                else if (c is "aac" or "m4a") audioSt.ItemsAac = (audioSt.ItemsAac ?? 0) + 1;
+                var br = s?.BitRate ?? 0;
+                if      (br >= 300_000) audioSt.ItemsMp3320 = (audioSt.ItemsMp3320 ?? 0) + 1;
+                else if (br >= 240_000) audioSt.ItemsMp3256 = (audioSt.ItemsMp3256 ?? 0) + 1;
+                else if (br >= 180_000) audioSt.ItemsMp3192 = (audioSt.ItemsMp3192 ?? 0) + 1;
+                else                   audioSt.ItemsMp3Low  = (audioSt.ItemsMp3Low  ?? 0) + 1;
             }
+            else if (codec is "aac" or "m4a" or "m4b" or "alac") audioSt.ItemsAac = (audioSt.ItemsAac ?? 0) + 1;
+            // ogg/opus/vorbis → comptés dans itemsStereo (pas de champ dédié)
+            // wma/wav/aiff → non scorés, ignorés volontairement
 
             if (track.HasImage(ImageType.Primary)) withCover++;
             if (!string.IsNullOrWhiteSpace(track.Name) && !string.IsNullOrWhiteSpace(track.Album)) withId3++;

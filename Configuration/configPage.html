@@ -11,62 +11,74 @@
     >
       <div data-role="content">
         <div class="content-primary">
-          <!-- ── Étape 1 — Clé API ─────────────────────────────────── -->
-          <div id="bl_step1">
-            <div class="sectionTitleContainer flex align-items-center">
-              <h2 class="sectionTitle">BenchLib</h2>
-            </div>
-            <p>
-              Envoie les statistiques agrégées de vos bibliothèques vers
-              BenchLib. Aucun titre n'est transmis.
-            </p>
+          <!-- ── Clé API ───────────────────────────────────────────── -->
+          <div class="sectionTitleContainer flex align-items-center">
+            <h2 class="sectionTitle">BenchLib</h2>
+          </div>
+          <p>
+            Envoie les statistiques agrégées de vos bibliothèques vers BenchLib.
+            Aucun titre n'est transmis.
+          </p>
 
-            <div class="inputContainer">
-              <label class="inputLabel inputLabelUnfocused" for="bl_key"
-                >Clé API BenchLib</label
-              >
-              <input
-                type="password"
-                id="bl_key"
-                name="ApiKey"
-                is="emby-input"
-              />
-              <div class="fieldDescription">
-                Générez votre clé sur
-                <a
-                  href="https://benchlib.com/dashboard/api-keys"
-                  target="_blank"
-                  rel="noopener"
-                  >benchlib.com/dashboard/api-keys</a
-                >
-              </div>
-            </div>
-
-            <button
-              is="emby-button"
-              type="button"
-              class="raised button-submit block"
-              id="bl_btn_detect"
+          <div class="inputContainer">
+            <label class="inputLabel inputLabelUnfocused" for="bl_key"
+              >Clé API BenchLib</label
             >
-              <span>Tester la connexion et détecter les bibliothèques</span>
-            </button>
-
-            <div
-              id="bl_step1_status"
-              style="
-                margin-top: 1em;
-                padding: 0.75em 1em;
-                border-radius: 4px;
-                display: none;
-              "
-            ></div>
+            <input type="password" id="bl_key" name="ApiKey" is="emby-input" />
+            <div class="fieldDescription">
+              Générez votre clé sur
+              <a
+                href="https://benchlib.com/dashboard/api-keys"
+                target="_blank"
+                rel="noopener"
+                >benchlib.com/dashboard/api-keys</a
+              >
+            </div>
           </div>
 
-          <!-- ── Étape 2 — Sélection des bibliothèques ──────────────── -->
+          <div class="inputContainer">
+            <label class="inputLabel inputLabelUnfocused" for="bl_public_url"
+              >URL publique du serveur</label
+            >
+            <input
+              type="url"
+              id="bl_public_url"
+              name="PublicUrl"
+              is="emby-input"
+              placeholder="https://jellyfin.mondomaine.com"
+            />
+            <div class="fieldDescription">
+              Nécessaire pour le calcul du score de
+              <strong>disponibilité</strong> (ping toutes les heures). Laissez
+              vide si votre serveur n'est pas accessible publiquement — le score
+              de disponibilité sera alors exclu.
+            </div>
+          </div>
+
+          <button
+            is="emby-button"
+            type="button"
+            class="raised button-submit block"
+            id="bl_btn_detect"
+          >
+            <span>Tester la connexion et détecter les bibliothèques</span>
+          </button>
+
+          <div
+            id="bl_step1_status"
+            style="
+              margin-top: 1em;
+              padding: 0.75em 1em;
+              border-radius: 4px;
+              display: none;
+            "
+          ></div>
+
+          <!-- ── Sélection des bibliothèques ────────────────────────── -->
           <div id="bl_step2" style="display: none">
             <div
               class="sectionTitleContainer flex align-items-center"
-              style="margin-top: 0.5em"
+              style="margin-top: 1.5em"
             >
               <h2 class="sectionTitle" style="flex: 1">
                 Bibliothèques détectées
@@ -181,14 +193,8 @@
 
         // ── Étape 1 → Étape 2 ────────────────────────────────────────────
 
-        function goToStep2() {
-          document.getElementById("bl_step1").style.display = "none";
+        function showLibraries() {
           document.getElementById("bl_step2").style.display = "block";
-        }
-
-        function goToStep1() {
-          document.getElementById("bl_step1").style.display = "block";
-          document.getElementById("bl_step2").style.display = "none";
         }
 
         // ── Détection des bibliothèques ───────────────────────────────────
@@ -381,14 +387,15 @@
           Dashboard.showLoadingMsg();
           ApiClient.getPluginConfiguration(BL_ID).then(function (config) {
             document.getElementById("bl_key").value = config.ApiKey || "";
+            document.getElementById("bl_public_url").value =
+              config.PublicUrl || "";
             var selected = config.SelectedLibraries || [];
 
             if (selected.length > 0) {
-              // Déjà configuré — aller directement à l'étape 2
-              goToStep2();
+              // Déjà configuré — afficher directement la liste des bibliothèques
+              showLibraries();
               loadLibraries(selected, null);
             }
-            // Sinon rester à l'étape 1
 
             renderLastResults(config.LastScanResults || []);
             Dashboard.hideLoadingMsg();
@@ -401,7 +408,7 @@
           ApiClient.getPluginConfiguration(BL_ID).then(function (config) {
             var selected = config.SelectedLibraries || [];
             detectLibraries(selected, function () {
-              goToStep2();
+              showLibraries();
             });
           });
         });
@@ -428,6 +435,9 @@
           Dashboard.showLoadingMsg();
           ApiClient.getPluginConfiguration(BL_ID).then(function (config) {
             config.ApiKey = document.getElementById("bl_key").value.trim();
+            config.PublicUrl = document
+              .getElementById("bl_public_url")
+              .value.trim();
             config.BenchlibApiUrl = "https://api.benchlib.com";
             config.SelectedLibraries = selected;
             ApiClient.updatePluginConfiguration(BL_ID, config).then(
