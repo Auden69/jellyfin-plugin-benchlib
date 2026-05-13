@@ -273,15 +273,13 @@
                 return;
               }
 
+              // Afficher d'abord les librairies sans count, puis charger les counts en async
+              var pendingCounts = items.length;
               items.forEach(function (lib) {
                 var mediaType = BL_TYPE_MAP[lib.CollectionType];
                 var key = lib.Id + "|" + mediaType;
                 var checked = selectedIds.indexOf(key) !== -1 ? "checked" : "";
-                var count = lib.ChildCount
-                  ? " <span style='color:#666;font-size:0.85em;'>(" +
-                    lib.ChildCount +
-                    " items)</span>"
-                  : "";
+                var countId = "bl_count_" + lib.Id;
 
                 var div = document.createElement("div");
                 div.className =
@@ -295,16 +293,51 @@
                   " />" +
                   "<span>" +
                   lib.Name +
-                  count +
+                  ' <span id="' +
+                  countId +
+                  '" style="color:#666;font-size:0.85em;">...</span>' +
                   "</span>" +
                   "</label>" +
                   '<div class="fieldDescription checkboxFieldDescription">' +
                   BL_TYPE_LABELS[mediaType] +
                   "</div>";
                 container.appendChild(div);
-              });
 
-              if (onSuccess) onSuccess();
+                // Charger le vrai count d'items en async
+                var includeType =
+                  lib.CollectionType === "tvshows"
+                    ? "Episode"
+                    : lib.CollectionType === "music"
+                      ? "Audio"
+                      : "Movie";
+                var countUrl = ApiClient.getUrl("Items", {
+                  ParentId: lib.Id,
+                  Recursive: true,
+                  IncludeItemTypes: includeType,
+                  Limit: 0,
+                });
+                ApiClient.getJSON(countUrl)
+                  .then(
+                    (function (countId) {
+                      return function (res) {
+                        var el = document.getElementById(countId);
+                        if (el)
+                          el.textContent =
+                            "(" +
+                            (res.TotalRecordCount || 0).toLocaleString() +
+                            " items)";
+                        pendingCounts--;
+                        if (pendingCounts === 0 && onSuccess) onSuccess();
+                      };
+                    })(countId),
+                  )
+                  .catch(function () {
+                    pendingCounts--;
+                    if (pendingCounts === 0 && onSuccess) onSuccess();
+                  });
+              });
+              // onSuccess appelé depuis les callbacks async ci-dessus
+              return;
             })
             .catch(function () {
               blStatus(

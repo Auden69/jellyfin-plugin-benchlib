@@ -244,7 +244,9 @@ public class LibraryScanner
             ApiResponseMs = (int)(DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() - startMs),
             Stats = new StatsPayload
             {
-                TotalItems      = allSeries.Count,
+                // TotalItems = épisodes (pas séries) — aligné sur le Pull TypeScript
+                // qui compte les épisodes via type=4 dans l'API Jellyfin
+                TotalItems      = episodes.Count,
                 Video           = video,
                 Audio           = audio,
                 Subtitles       = subtitles,
